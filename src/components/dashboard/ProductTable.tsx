@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { ArrowUpDown, Columns3, Download } from "lucide-react";
 import { Product } from "@/lib/mockData";
 
-const COLUMNS = [
+type Col = { key: string; label: string; always?: boolean };
+const COLUMNS: Col[] = [
   { key: "name", label: "Product", always: true },
   { key: "sku", label: "SKU", always: true },
   { key: "platform", label: "Platform" },
@@ -15,7 +16,7 @@ const COLUMNS = [
   { key: "stockWarehouse", label: "Stock WH" },
   { key: "doh", label: "DOH" },
   { key: "fulfillment", label: "Fulfillment %" },
-] as const;
+];
 
 type Props = { products: Product[]; onSelect: (p: Product) => void };
 
