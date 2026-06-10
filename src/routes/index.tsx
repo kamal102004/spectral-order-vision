@@ -11,6 +11,7 @@ import { TrendChart } from "@/components/dashboard/TrendChart";
 import { InsightsPanel } from "@/components/dashboard/InsightsPanel";
 import { ProductTable } from "@/components/dashboard/ProductTable";
 import { ProductDrillDown } from "@/components/dashboard/ProductDrillDown";
+import { UploadPanel } from "@/components/dashboard/UploadPanel";
 
 export const Route = createFileRoute("/")({
   head: () => ({
