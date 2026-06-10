@@ -53,6 +53,7 @@ function Dashboard() {
   ]);
   const [adding, setAdding] = useState(false);
   const [selected, setSelected] = useState<Product | null>(null);
+  const [uploadedProducts, setUploadedProducts] = useState<Product[] | null>(null);
 
   const filtered = useMemo(() => {
     return PRODUCTS.filter(
