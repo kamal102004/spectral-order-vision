@@ -176,7 +176,7 @@ function Dashboard() {
 
         {/* Trend + Insights */}
         <section className="grid gap-5 lg:grid-cols-3">
-          <div className="lg:col-span-2"><TrendChart /></div>
+          <div className="lg:col-span-2"><TrendChart products={filtered} period={period} /></div>
           <InsightsPanel />
         </section>
 
