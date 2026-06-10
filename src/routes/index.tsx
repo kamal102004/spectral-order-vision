@@ -118,6 +118,8 @@ function Dashboard() {
           query={query} setQuery={setQuery}
         />
 
+        <UploadPanel onData={setUploadedProducts} uploadedCount={uploadedProducts?.length ?? 0} />
+
         {/* KPI Grid */}
         <section>
           <div className="mb-3 flex items-center justify-between">
