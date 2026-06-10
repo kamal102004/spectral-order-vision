@@ -11,6 +11,7 @@ import { TrendChart } from "@/components/dashboard/TrendChart";
 import { InsightsPanel } from "@/components/dashboard/InsightsPanel";
 import { ProductTable } from "@/components/dashboard/ProductTable";
 import { ProductDrillDown } from "@/components/dashboard/ProductDrillDown";
+import { UploadPanel } from "@/components/dashboard/UploadPanel";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -52,9 +53,12 @@ function Dashboard() {
   ]);
   const [adding, setAdding] = useState(false);
   const [selected, setSelected] = useState<Product | null>(null);
+  const [uploadedProducts, setUploadedProducts] = useState<Product[] | null>(null);
+
+  const dataSource = uploadedProducts ?? PRODUCTS;
 
   const filtered = useMemo(() => {
-    return PRODUCTS.filter(
+    return dataSource.filter(
       (p) =>
         (platform === "All" || p.platform === platform) &&
         (city === "All" || p.city === city) &&
@@ -62,7 +66,7 @@ function Dashboard() {
           p.name.toLowerCase().includes(query.toLowerCase()) ||
           p.sku.toLowerCase().includes(query.toLowerCase()))
     );
-  }, [platform, city, query]);
+  }, [dataSource, platform, city, query]);
 
   const agg = useMemo(() => aggregate(filtered), [filtered]);
 
@@ -113,6 +117,8 @@ function Dashboard() {
           period={period} setPeriod={setPeriod}
           query={query} setQuery={setQuery}
         />
+
+        <UploadPanel onData={setUploadedProducts} uploadedCount={uploadedProducts?.length ?? 0} />
 
         {/* KPI Grid */}
         <section>
