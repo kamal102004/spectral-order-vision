@@ -100,11 +100,11 @@ function Dashboard() {
           </nav>
           <div className="flex items-center gap-2">
             <div className="hidden text-right md:block">
-              <p className="text-xs font-medium">Aarav Mehta</p>
+              <p className="text-xs font-medium">Kamal</p>
               <p className="text-[10px] text-muted-foreground">Analyst</p>
             </div>
             <div className="grid h-9 w-9 place-items-center rounded-full border border-[var(--gold)]/40 bg-[var(--gold)]/10 text-xs font-semibold text-[var(--gold-soft)]">
-              AM
+              K
             </div>
           </div>
         </div>
