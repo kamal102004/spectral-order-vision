@@ -55,8 +55,10 @@ function Dashboard() {
   const [selected, setSelected] = useState<Product | null>(null);
   const [uploadedProducts, setUploadedProducts] = useState<Product[] | null>(null);
 
+  const dataSource = uploadedProducts ?? PRODUCTS;
+
   const filtered = useMemo(() => {
-    return PRODUCTS.filter(
+    return dataSource.filter(
       (p) =>
         (platform === "All" || p.platform === platform) &&
         (city === "All" || p.city === city) &&
@@ -64,7 +66,7 @@ function Dashboard() {
           p.name.toLowerCase().includes(query.toLowerCase()) ||
           p.sku.toLowerCase().includes(query.toLowerCase()))
     );
-  }, [platform, city, query]);
+  }, [dataSource, platform, city, query]);
 
   const agg = useMemo(() => aggregate(filtered), [filtered]);
 
