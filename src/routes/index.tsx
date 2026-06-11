@@ -56,7 +56,17 @@ function Dashboard() {
   ]);
   const [adding, setAdding] = useState(false);
   const [selected, setSelected] = useState<Product | null>(null);
-  const [uploadedProducts, setUploadedProducts] = useState<Product[] | null>(null);
+  const [upload, setUpload] = useState<UploadResult | null>(null);
+
+  const uploadedProducts = useMemo(() => {
+    if (!upload || !upload.parsed.config || upload.parsed.detectedType !== "inventory") return null;
+    return rowsToProducts(upload.parsed.rows, upload.parsed.config, upload.mapping);
+  }, [upload]);
+
+  const keywordRows = useMemo(() => {
+    if (!upload || !upload.parsed.config || upload.parsed.detectedType !== "keyword") return null;
+    return buildKeywordRows(upload.parsed.rows, upload.parsed.config, upload.mapping);
+  }, [upload]);
 
   const dataSource = uploadedProducts ?? PRODUCTS;
 
@@ -121,7 +131,23 @@ function Dashboard() {
           query={query} setQuery={setQuery}
         />
 
-        <UploadPanel onData={setUploadedProducts} uploadedCount={uploadedProducts?.length ?? 0} />
+        <UploadPanel
+          onApply={setUpload}
+          activeLabel={upload?.parsed.config?.name}
+        />
+
+        {keywordRows ? (
+          <KeywordAnalytics rows={keywordRows} />
+        ) : upload && upload.parsed.detectedType !== "inventory" && upload.parsed.detectedType !== "unknown" ? (
+          <section className="glass rounded-2xl p-6 text-center">
+            <h2 className="font-display text-xl text-gold">
+              {upload.parsed.config?.name} loaded
+            </h2>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {upload.parsed.rows.length.toLocaleString()} rows imported. Tailored analytics for this file type are coming soon — your data is ready to query.
+            </p>
+          </section>
+        ) : (<></>)}
 
         {/* KPI Grid */}
         <section>
