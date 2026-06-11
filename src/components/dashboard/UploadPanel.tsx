@@ -135,6 +135,19 @@ export function UploadPanel({ onData, uploadedCount }: Props) {
               </span>
             </div>
           )}
+          {result.warnings && result.warnings.length > 0 && (
+            <div className="rounded-lg border border-[var(--gold)]/30 bg-[var(--gold)]/5 p-3 text-[11px] text-[var(--gold-soft)]">
+              <p className="mb-1 font-medium">Notes</p>
+              <ul className="list-inside list-disc space-y-0.5">
+                {result.warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            </div>
+          )}
+          {result.detectedColumns && result.detectedColumns.length > 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              Detected columns: {result.detectedColumns.join(", ")}
+            </p>
+          )}
         </div>
       )}
 
