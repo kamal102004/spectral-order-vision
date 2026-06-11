@@ -11,7 +11,10 @@ import { TrendChart } from "@/components/dashboard/TrendChart";
 import { InsightsPanel } from "@/components/dashboard/InsightsPanel";
 import { ProductTable } from "@/components/dashboard/ProductTable";
 import { ProductDrillDown } from "@/components/dashboard/ProductDrillDown";
-import { UploadPanel } from "@/components/dashboard/UploadPanel";
+import { UploadPanel, UploadResult } from "@/components/dashboard/UploadPanel";
+import { KeywordAnalytics } from "@/components/dashboard/KeywordAnalytics";
+import { rowsToProducts } from "@/lib/csvParser";
+import { buildKeywordRows } from "@/lib/keywordAnalytics";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -53,7 +56,17 @@ function Dashboard() {
   ]);
   const [adding, setAdding] = useState(false);
   const [selected, setSelected] = useState<Product | null>(null);
-  const [uploadedProducts, setUploadedProducts] = useState<Product[] | null>(null);
+  const [upload, setUpload] = useState<UploadResult | null>(null);
+
+  const uploadedProducts = useMemo(() => {
+    if (!upload || !upload.parsed.config || upload.parsed.detectedType !== "inventory") return null;
+    return rowsToProducts(upload.parsed.rows, upload.parsed.config, upload.mapping);
+  }, [upload]);
+
+  const keywordRows = useMemo(() => {
+    if (!upload || !upload.parsed.config || upload.parsed.detectedType !== "keyword") return null;
+    return buildKeywordRows(upload.parsed.rows, upload.parsed.config, upload.mapping);
+  }, [upload]);
 
   const dataSource = uploadedProducts ?? PRODUCTS;
 
@@ -118,8 +131,26 @@ function Dashboard() {
           query={query} setQuery={setQuery}
         />
 
-        <UploadPanel onData={setUploadedProducts} uploadedCount={uploadedProducts?.length ?? 0} />
+        <UploadPanel
+          onApply={setUpload}
+          activeLabel={upload?.parsed.config?.name}
+        />
 
+        {keywordRows ? (
+          <KeywordAnalytics rows={keywordRows} />
+        ) : upload && upload.parsed.detectedType !== "inventory" && upload.parsed.detectedType !== "unknown" ? (
+          <section className="glass rounded-2xl p-6 text-center">
+            <h2 className="font-display text-xl text-gold">
+              {upload.parsed.config?.name} loaded
+            </h2>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {upload.parsed.rows.length.toLocaleString()} rows imported. Tailored analytics for this file type are coming soon — your data is ready to query.
+            </p>
+          </section>
+        ) : (<></>)}
+
+        {(!upload || upload.parsed.detectedType === "inventory") && (
+        <>
         {/* KPI Grid */}
         <section>
           <div className="mb-3 flex items-center justify-between">
@@ -184,6 +215,8 @@ function Dashboard() {
         <section>
           <ProductTable products={filtered} onSelect={setSelected} />
         </section>
+        </>
+        )}
 
         <footer className="pt-4 pb-8 text-center text-[11px] text-muted-foreground">
           Aurum · Crafted for marketplace operators · Grey & Gold edition

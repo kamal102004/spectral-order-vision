@@ -1,93 +1,27 @@
 import Papa from "papaparse";
 import { Product, Platform, PLATFORMS } from "./mockData";
+import {
+  FileTypeConfig,
+  FileTypeId,
+  autoMap,
+  detectFileType,
+  getConfig,
+  missingRequired,
+} from "./fileTypes";
 
-// Map of normalized header → Product field. Keep keys lowercase + no spaces/symbols.
-const HEADER_MAP: Record<string, keyof Product> = {
-  // identity
-  id: "id",
-  productid: "id",
-  itemid: "id",
-  name: "name",
-  product: "name",
-  productname: "name",
-  itemname: "name",
-  title: "name",
-  description: "name",
-  sku: "sku",
-  skuid: "sku",
-  productsku: "sku",
-  itemcode: "sku",
-  code: "sku",
-  ean: "sku",
-  barcode: "sku",
-  asin: "sku",
-  // platform / city
-  platform: "platform",
-  marketplace: "platform",
-  channel: "platform",
-  source: "platform",
-  city: "city",
-  location: "city",
-  region: "city",
-  market: "city",
-  // orders
-  orderqty: "orderQty",
-  orderquantity: "orderQty",
-  orders: "orderQty",
-  qty: "orderQty",
-  quantity: "orderQty",
-  unitssold: "orderQty",
-  sales: "orderQty",
-  // PO units
-  porequested: "poRequested",
-  requested: "poRequested",
-  unitsrequested: "poRequested",
-  porderqty: "poRequested",
-  poqty: "poRequested",
-  pofulfilled: "poFulfilled",
-  fulfilled: "poFulfilled",
-  unitsfulfilled: "poFulfilled",
-  delivered: "poFulfilled",
-  received: "poFulfilled",
-  poexpired: "poExpired",
-  expired: "poExpired",
-  unitsexpired: "poExpired",
-  poopen: "poOpen",
-  open: "poOpen",
-  unitsopen: "poOpen",
-  pending: "poOpen",
-  // stock
-  stockdarkstore: "stockDarkstore",
-  darkstorestock: "stockDarkstore",
-  darkstore: "stockDarkstore",
-  storestock: "stockDarkstore",
-  stockwarehouse: "stockWarehouse",
-  warehousestock: "stockWarehouse",
-  warehouse: "stockWarehouse",
-  whstock: "stockWarehouse",
-  stockopenforro: "stockOpenForRo",
-  openforro: "stockOpenForRo",
-  rostock: "stockOpenForRo",
-  // PO counts
-  totalpos: "totalPos",
-  totalpurchaseorders: "totalPos",
-  pototal: "totalPos",
-  openpos: "openPos",
-  openpurchaseorders: "openPos",
-  expiredpos: "expiredPos",
-  fulfilledpos: "fulfilledPos",
-  fulfilledpurchaseorders: "fulfilledPos",
-  // doh
-  doh: "doh",
-  daysonhand: "doh",
-  daysofinventory: "doh",
-  doi: "doh",
-  coverdays: "doh",
+export type RawRow = Record<string, unknown>;
+
+export type ParsedFile = {
+  headers: string[];
+  rows: RawRow[];
+  detectedType: FileTypeId;
+  config?: FileTypeConfig;
+  mapping: Record<string, string | null>;
+  missing: string[];
+  preview: RawRow[]; // first 10 mapped rows
+  warnings: string[];
+  errors: string[];
 };
-
-function normalizeHeader(h: string): string {
-  return h.toLowerCase().trim().replace(/[\s_\-./\\]+/g, "").replace(/[^a-z0-9]/g, "");
-}
 
 function asNumber(v: unknown): number {
   if (v === null || v === undefined || v === "") return 0;
@@ -103,16 +37,126 @@ function asString(v: unknown): string {
 }
 
 function validPlatform(p: string): Platform {
-  const norm = p.trim().toLowerCase();
-  const found = PLATFORMS.find((x) => x.toLowerCase() === norm);
-  if (found) return found;
-  // fuzzy
-  if (norm.includes("blink")) return "Blinkit" as Platform;
-  if (norm.includes("insta") || norm.includes("swiggy")) return "Instamart" as Platform;
-  if (norm.includes("zepto")) return "Zepto" as Platform;
+  const n = p.trim().toLowerCase();
+  const f = PLATFORMS.find((x) => x.toLowerCase() === n);
+  if (f) return f;
+  if (n.includes("blink")) return "Blinkit";
+  if (n.includes("insta") || n.includes("swiggy")) return "Instamart";
+  if (n.includes("zepto")) return "Zepto";
   return PLATFORMS[0];
 }
 
+// Apply a mapping to a raw row producing { fieldKey: typedValue }
+export function mapRow(
+  row: RawRow,
+  config: FileTypeConfig,
+  mapping: Record<string, string | null>
+): Record<string, string | number> {
+  const out: Record<string, string | number> = {};
+  for (const f of config.fields) {
+    const src = mapping[f.key];
+    const raw = src ? row[src] : undefined;
+    out[f.key] = f.numeric ? asNumber(raw) : asString(raw);
+  }
+  return out;
+}
+
+// Convert mapped rows into inventory Products (only used when type === inventory)
+export function rowsToProducts(
+  rows: RawRow[],
+  config: FileTypeConfig,
+  mapping: Record<string, string | null>
+): Product[] {
+  const products: Product[] = [];
+  let i = 0;
+  for (const row of rows) {
+    i++;
+    const m = mapRow(row, config, mapping);
+    products.push({
+      id: `row-${i}`,
+      name: String(m.name || `Product ${i}`),
+      sku: String(m.sku || `SKU-${String(i).padStart(5, "0")}`),
+      platform: validPlatform(String(m.platform || "")),
+      city: String(m.city || "Unknown"),
+      orderQty: Number(m.orderQty) || 0,
+      poRequested: Number(m.poRequested) || 0,
+      poFulfilled: Number(m.poFulfilled) || 0,
+      poExpired: Number(m.poExpired) || 0,
+      poOpen: Number(m.poOpen) || 0,
+      stockDarkstore: Number(m.stockDarkstore) || 0,
+      stockWarehouse: Number(m.stockWarehouse) || 0,
+      stockOpenForRo: Number(m.stockOpenForRo) || 0,
+      totalPos: Number(m.totalPos) || 0,
+      openPos: Number(m.openPos) || 0,
+      expiredPos: Number(m.expiredPos) || 0,
+      fulfilledPos: Number(m.fulfilledPos) || 0,
+      doh: Number(m.doh) || 0,
+    });
+  }
+  return products;
+}
+
+export function parseFile(file: File): Promise<ParsedFile> {
+  return new Promise((resolve) => {
+    Papa.parse<RawRow>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const warnings: string[] = [];
+        const errors: string[] = [];
+        const headers = (results.meta.fields ?? []).filter(Boolean) as string[];
+
+        if (!headers.length) {
+          errors.push("No columns detected. Ensure the first row contains headers.");
+          resolve({
+            headers: [], rows: [], detectedType: "unknown", mapping: {},
+            missing: [], preview: [], warnings, errors,
+          });
+          return;
+        }
+
+        const { type, config } = detectFileType(headers);
+
+        if (!config) {
+          warnings.push("Could not confidently detect the file type. Please map columns manually.");
+          resolve({
+            headers, rows: results.data, detectedType: "unknown",
+            mapping: {}, missing: [], preview: results.data.slice(0, 10),
+            warnings, errors,
+          });
+          return;
+        }
+
+        const mapping = autoMap(config, headers);
+        const missing = missingRequired(config, mapping);
+        if (results.errors.length) {
+          warnings.push(
+            ...results.errors.slice(0, 3).map((e) => `Row ${e.row ?? "?"}: ${e.message}`)
+          );
+        }
+
+        resolve({
+          headers,
+          rows: results.data,
+          detectedType: type,
+          config,
+          mapping,
+          missing,
+          preview: results.data.slice(0, 10),
+          warnings,
+          errors,
+        });
+      },
+      error: (err) =>
+        resolve({
+          headers: [], rows: [], detectedType: "unknown",
+          mapping: {}, missing: [], preview: [], warnings: [], errors: [err.message],
+        }),
+    });
+  });
+}
+
+// Backwards-compat: keep old export but route through new parser (inventory only).
 export type ParseResult = {
   products: Product[];
   rowCount: number;
@@ -121,93 +165,23 @@ export type ParseResult = {
   detectedColumns: string[];
 };
 
-export function parseProductCsv(file: File): Promise<ParseResult> {
-  return new Promise((resolve) => {
-    Papa.parse<Record<string, unknown>>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const errors: string[] = [];
-        const warnings: string[] = [];
-
-        if (results.errors.length) {
-          warnings.push(...results.errors.slice(0, 3).map((e) => `Row ${e.row ?? "?"}: ${e.message}`));
-        }
-
-        const rawHeaders = (results.meta.fields ?? []).filter(Boolean);
-
-        if (rawHeaders.length === 0) {
-          errors.push("No columns detected. Make sure the first row of your CSV contains column headers.");
-          resolve({ products: [], rowCount: 0, errors, warnings, detectedColumns: [] });
-          return;
-        }
-
-        const fieldMap = new Map<string, keyof Product>();
-        const unmapped: string[] = [];
-        for (const h of rawHeaders) {
-          const norm = normalizeHeader(h);
-          const mapped = HEADER_MAP[norm];
-          if (mapped) fieldMap.set(h, mapped);
-          else unmapped.push(h);
-        }
-
-        if (fieldMap.size === 0) {
-          errors.push(
-            `None of your columns matched expected fields. Detected: ${rawHeaders.join(", ")}. ` +
-              `Try renaming at least one column to: name, sku, platform, city, requested, fulfilled, etc.`
-          );
-          resolve({ products: [], rowCount: 0, errors, warnings, detectedColumns: rawHeaders });
-          return;
-        }
-
-        if (!fieldMap.has("name" as never) && ![...fieldMap.values()].includes("name")) {
-          warnings.push("No product name column found — using row index as the product name.");
-        }
-        if (![...fieldMap.values()].includes("sku")) {
-          warnings.push("No SKU column found — auto-generating SKUs.");
-        }
-        if (unmapped.length) {
-          warnings.push(`Ignored unrecognized columns: ${unmapped.slice(0, 6).join(", ")}${unmapped.length > 6 ? "…" : ""}`);
-        }
-
-        const products: Product[] = [];
-        let rowCount = 0;
-
-        for (const row of results.data) {
-          rowCount++;
-          const p: Partial<Record<keyof Product, unknown>> = {};
-          for (const [rawH, mapped] of fieldMap) {
-            p[mapped] = row[rawH];
-          }
-
-          const product: Product = {
-            id: asString(p.id) || `row-${rowCount}`,
-            name: asString(p.name) || `Product ${rowCount}`,
-            sku: asString(p.sku) || `SKU-${String(rowCount).padStart(5, "0")}`,
-            platform: validPlatform(asString(p.platform)),
-            city: asString(p.city) || "Unknown",
-            orderQty: asNumber(p.orderQty),
-            poRequested: asNumber(p.poRequested),
-            poFulfilled: asNumber(p.poFulfilled),
-            poExpired: asNumber(p.poExpired),
-            poOpen: asNumber(p.poOpen),
-            stockDarkstore: asNumber(p.stockDarkstore),
-            stockWarehouse: asNumber(p.stockWarehouse),
-            stockOpenForRo: asNumber(p.stockOpenForRo),
-            totalPos: asNumber(p.totalPos),
-            openPos: asNumber(p.openPos),
-            expiredPos: asNumber(p.expiredPos),
-            fulfilledPos: asNumber(p.fulfilledPos),
-            doh: asNumber(p.doh),
-          };
-
-          products.push(product);
-        }
-
-        resolve({ products, rowCount, errors, warnings, detectedColumns: rawHeaders });
-      },
-      error: (err) =>
-        resolve({ products: [], rowCount: 0, errors: [err.message], warnings: [], detectedColumns: [] }),
-    });
-  });
+export async function parseProductCsv(file: File): Promise<ParseResult> {
+  const r = await parseFile(file);
+  if (r.detectedType !== "inventory" || !r.config) {
+    return {
+      products: [],
+      rowCount: r.rows.length,
+      errors: r.errors.length ? r.errors : ["Not an inventory file."],
+      warnings: r.warnings,
+      detectedColumns: r.headers,
+    };
+  }
+  const products = rowsToProducts(r.rows, r.config, r.mapping);
+  return {
+    products,
+    rowCount: products.length,
+    errors: r.errors,
+    warnings: r.warnings,
+    detectedColumns: r.headers,
+  };
 }
