@@ -1,24 +1,8 @@
 import Papa from "papaparse";
 import { Product, Platform, PLATFORMS } from "./mockData";
 
-export type ReportType =
-  | "product"
-  | "campaign"
-  | "targeting"
-  | "inventory";
-
-export type ReportSchema = {
-  id: ReportType;
-  label: string;
-  description: string;
-  /** Required logical fields */
-  required: string[];
-  /** Map of normalized header alias → logical field */
-  aliases: Record<string, string>;
-};
-
-const baseAliases = {
-  // product identity
+const HEADER_MAP: Record<string, keyof Product> = {
+  id: "id",
   name: "name",
   product: "name",
   product_name: "name",
@@ -29,169 +13,46 @@ const baseAliases = {
   marketplace: "platform",
   city: "city",
   location: "city",
-};
-
-export const REPORT_SCHEMAS: Record<ReportType, ReportSchema> = {
-  product: {
-    id: "product",
-    label: "Product Analytics",
-    description: "PO, stock & fulfillment at SKU level",
-    required: [
-      "name",
-      "sku",
-      "platform",
-      "city",
-      "orderQty",
-      "poRequested",
-      "poFulfilled",
-      "poExpired",
-      "poOpen",
-      "stockDarkstore",
-      "stockWarehouse",
-      "doh",
-    ],
-    aliases: {
-      ...baseAliases,
-      orderqty: "orderQty",
-      order_qty: "orderQty",
-      orders: "orderQty",
-      order_quantity: "orderQty",
-      porequested: "poRequested",
-      po_requested: "poRequested",
-      requested: "poRequested",
-      units_requested: "poRequested",
-      pofulfilled: "poFulfilled",
-      po_fulfilled: "poFulfilled",
-      fulfilled: "poFulfilled",
-      units_fulfilled: "poFulfilled",
-      poexpired: "poExpired",
-      po_expired: "poExpired",
-      expired: "poExpired",
-      poopen: "poOpen",
-      po_open: "poOpen",
-      open: "poOpen",
-      stockdarkstore: "stockDarkstore",
-      stock_darkstore: "stockDarkstore",
-      darkstore_stock: "stockDarkstore",
-      stockwarehouse: "stockWarehouse",
-      stock_warehouse: "stockWarehouse",
-      warehouse_stock: "stockWarehouse",
-      stockopenforro: "stockOpenForRo",
-      stock_open_for_ro: "stockOpenForRo",
-      totalpos: "totalPos",
-      total_pos: "totalPos",
-      openpos: "openPos",
-      open_pos: "openPos",
-      expiredpos: "expiredPos",
-      expired_pos: "expiredPos",
-      fulfilledpos: "fulfilledPos",
-      fulfilled_pos: "fulfilledPos",
-      doh: "doh",
-      days_on_hand: "doh",
-      days_of_inventory: "doh",
-    },
-  },
-  campaign: {
-    id: "campaign",
-    label: "Campaign Analytics",
-    description: "Spend, impressions, clicks & ROAS per campaign",
-    required: [
-      "campaignName",
-      "platform",
-      "spend",
-      "impressions",
-      "clicks",
-      "orders",
-      "revenue",
-    ],
-    aliases: {
-      campaign: "campaignName",
-      campaign_name: "campaignName",
-      campaign_id: "campaignId",
-      campaignid: "campaignId",
-      platform: "platform",
-      marketplace: "platform",
-      spend: "spend",
-      cost: "spend",
-      ad_spend: "spend",
-      impressions: "impressions",
-      impr: "impressions",
-      clicks: "clicks",
-      ctr: "ctr",
-      cpc: "cpc",
-      orders: "orders",
-      conversions: "orders",
-      revenue: "revenue",
-      sales: "revenue",
-      roas: "roas",
-    },
-  },
-  targeting: {
-    id: "targeting",
-    label: "Targeting Analytics",
-    description: "Keyword & audience targeting performance",
-    required: [
-      "keyword",
-      "matchType",
-      "platform",
-      "impressions",
-      "clicks",
-      "spend",
-    ],
-    aliases: {
-      keyword: "keyword",
-      search_term: "keyword",
-      target: "keyword",
-      match_type: "matchType",
-      matchtype: "matchType",
-      platform: "platform",
-      marketplace: "platform",
-      campaign: "campaignName",
-      campaign_name: "campaignName",
-      impressions: "impressions",
-      clicks: "clicks",
-      spend: "spend",
-      cost: "spend",
-      orders: "orders",
-      conversions: "orders",
-      revenue: "revenue",
-      ctr: "ctr",
-      cpc: "cpc",
-      acos: "acos",
-    },
-  },
-  inventory: {
-    id: "inventory",
-    label: "Inventory / PO Analytics",
-    description: "Stock positions, PO status & DOH",
-    required: [
-      "sku",
-      "platform",
-      "city",
-      "stockDarkstore",
-      "stockWarehouse",
-      "doh",
-    ],
-    aliases: {
-      ...baseAliases,
-      stockdarkstore: "stockDarkstore",
-      stock_darkstore: "stockDarkstore",
-      stockwarehouse: "stockWarehouse",
-      stock_warehouse: "stockWarehouse",
-      stockopenforro: "stockOpenForRo",
-      stock_open_for_ro: "stockOpenForRo",
-      totalpos: "totalPos",
-      total_pos: "totalPos",
-      openpos: "openPos",
-      open_pos: "openPos",
-      expiredpos: "expiredPos",
-      expired_pos: "expiredPos",
-      fulfilledpos: "fulfilledPos",
-      fulfilled_pos: "fulfilledPos",
-      doh: "doh",
-      days_on_hand: "doh",
-    },
-  },
+  orderqty: "orderQty",
+  order_qty: "orderQty",
+  orders: "orderQty",
+  order_quantity: "orderQty",
+  porequested: "poRequested",
+  po_requested: "poRequested",
+  requested: "poRequested",
+  units_requested: "poRequested",
+  pofulfilled: "poFulfilled",
+  po_fulfilled: "poFulfilled",
+  fulfilled: "poFulfilled",
+  units_fulfilled: "poFulfilled",
+  poexpired: "poExpired",
+  po_expired: "poExpired",
+  expired: "poExpired",
+  poopen: "poOpen",
+  po_open: "poOpen",
+  open: "poOpen",
+  stockdarkstore: "stockDarkstore",
+  stock_darkstore: "stockDarkstore",
+  darkstore_stock: "stockDarkstore",
+  stockwarehouse: "stockWarehouse",
+  stock_warehouse: "stockWarehouse",
+  warehouse_stock: "stockWarehouse",
+  stockopenforro: "stockOpenForRo",
+  stock_open_for_ro: "stockOpenForRo",
+  totalpos: "totalPos",
+  total_pos: "totalPos",
+  total_purchase_orders: "totalPos",
+  openpos: "openPos",
+  open_pos: "openPos",
+  open_purchase_orders: "openPos",
+  expiredpos: "expiredPos",
+  expired_pos: "expiredPos",
+  fulfilledpos: "fulfilledPos",
+  fulfilled_pos: "fulfilledPos",
+  fulfilled_purchase_orders: "fulfilledPos",
+  doh: "doh",
+  days_on_hand: "doh",
+  days_of_inventory: "doh",
 };
 
 function normalizeHeader(h: string): string {
@@ -200,7 +61,7 @@ function normalizeHeader(h: string): string {
 
 function asNumber(v: unknown): number {
   if (v === null || v === undefined || v === "") return 0;
-  const n = Number(String(v).replace(/,/g, ""));
+  const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -210,26 +71,18 @@ function asString(v: unknown): string {
 }
 
 function validPlatform(p: string): Platform | "Other" {
-  const found = PLATFORMS.find((x) => x.toLowerCase() === p.trim().toLowerCase());
+  const norm = p.trim();
+  const found = PLATFORMS.find((x) => x.toLowerCase() === norm.toLowerCase());
   return found ?? "Other";
 }
 
 export type ParseResult = {
-  reportType: ReportType;
-  /** Only populated for product reports — drives dashboard */
   products: Product[];
-  /** Raw mapped rows for non-product reports */
-  rows: Record<string, unknown>[];
   rowCount: number;
-  detectedColumns: string[];
-  missingColumns: string[];
-  mapping: Record<string, string>;
   errors: string[];
 };
 
-export function parseCsv(file: File, reportType: ReportType): Promise<ParseResult> {
-  const schema = REPORT_SCHEMAS[reportType];
-
+export function parseProductCsv(file: File): Promise<ParseResult> {
   return new Promise((resolve) => {
     Papa.parse<Record<string, unknown>>(file, {
       header: true,
@@ -241,82 +94,59 @@ export function parseCsv(file: File, reportType: ReportType): Promise<ParseResul
         }
 
         const rawHeaders = results.meta.fields ?? [];
-        const mapping: Record<string, string> = {};
+        const fieldMap = new Map<string, keyof Product>();
         for (const h of rawHeaders) {
-          const mapped = schema.aliases[normalizeHeader(h)];
-          if (mapped) mapping[h] = mapped;
+          const norm = normalizeHeader(h);
+          const mapped = HEADER_MAP[norm];
+          if (mapped) fieldMap.set(h, mapped);
         }
 
-        const detected = Object.values(mapping);
-        const missing = schema.required.filter((c) => !detected.includes(c));
-
-        if (missing.length) {
+        if (!fieldMap.has("name") && !fieldMap.has("sku")) {
           errors.push(
-            `Missing required column${missing.length > 1 ? "s" : ""} for ${schema.label}: ${missing.join(", ")}`
+            "Could not find recognizable product columns (name, sku). Please check your CSV headers."
           );
         }
 
-        const rows: Record<string, unknown>[] = [];
         const products: Product[] = [];
         let rowCount = 0;
 
         for (const row of results.data) {
           rowCount++;
-          const mapped: Record<string, unknown> = {};
-          for (const [rawH, logical] of Object.entries(mapping)) {
-            mapped[logical] = row[rawH];
+          const p = {} as Record<keyof Product, unknown>;
+          for (const [rawH, mapped] of fieldMap) {
+            p[mapped] = row[rawH];
           }
-          rows.push(mapped);
 
-          if (reportType === "product" && missing.length === 0) {
-            products.push({
-              id: asString(mapped.id) || `${rowCount}-${asString(mapped.sku)}`,
-              name: asString(mapped.name) || `Product ${rowCount}`,
-              sku: asString(mapped.sku) || `SKU-${rowCount}`,
-              platform: validPlatform(asString(mapped.platform)) as Platform,
-              city: asString(mapped.city) || "Unknown",
-              orderQty: asNumber(mapped.orderQty),
-              poRequested: asNumber(mapped.poRequested),
-              poFulfilled: asNumber(mapped.poFulfilled),
-              poExpired: asNumber(mapped.poExpired),
-              poOpen: asNumber(mapped.poOpen),
-              stockDarkstore: asNumber(mapped.stockDarkstore),
-              stockWarehouse: asNumber(mapped.stockWarehouse),
-              stockOpenForRo: asNumber(mapped.stockOpenForRo),
-              totalPos: asNumber(mapped.totalPos),
-              openPos: asNumber(mapped.openPos),
-              expiredPos: asNumber(mapped.expiredPos),
-              fulfilledPos: asNumber(mapped.fulfilledPos),
-              doh: asNumber(mapped.doh),
-            });
-          }
+          const platformVal = validPlatform(asString(p.platform));
+          const id = asString(p.id) || `${rowCount}-${asString(p.sku)}`;
+
+          const product: Product = {
+            id,
+            name: asString(p.name) || `Product ${rowCount}`,
+            sku: asString(p.sku) || `SKU-${rowCount}`,
+            platform: platformVal as Platform,
+            city: asString(p.city) || "Unknown",
+            orderQty: asNumber(p.orderQty),
+            poRequested: asNumber(p.poRequested),
+            poFulfilled: asNumber(p.poFulfilled),
+            poExpired: asNumber(p.poExpired),
+            poOpen: asNumber(p.poOpen),
+            stockDarkstore: asNumber(p.stockDarkstore),
+            stockWarehouse: asNumber(p.stockWarehouse),
+            stockOpenForRo: asNumber(p.stockOpenForRo),
+            totalPos: asNumber(p.totalPos),
+            openPos: asNumber(p.openPos),
+            expiredPos: asNumber(p.expiredPos),
+            fulfilledPos: asNumber(p.fulfilledPos),
+            doh: asNumber(p.doh),
+          };
+
+          products.push(product);
         }
 
-        resolve({
-          reportType,
-          products,
-          rows,
-          rowCount,
-          detectedColumns: detected,
-          missingColumns: missing,
-          mapping,
-          errors,
-        });
+        resolve({ products, rowCount, errors });
       },
-      error: (err) =>
-        resolve({
-          reportType,
-          products: [],
-          rows: [],
-          rowCount: 0,
-          detectedColumns: [],
-          missingColumns: schema.required,
-          mapping: {},
-          errors: [err.message],
-        }),
+      error: (err) => resolve({ products: [], rowCount: 0, errors: [err.message] }),
     });
   });
 }
-
-/** Back-compat */
-export const parseProductCsv = (file: File) => parseCsv(file, "product");
