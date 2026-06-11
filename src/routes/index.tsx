@@ -149,6 +149,8 @@ function Dashboard() {
           </section>
         ) : (<></>)}
 
+        {(!upload || upload.parsed.detectedType === "inventory") && (
+        <>
         {/* KPI Grid */}
         <section>
           <div className="mb-3 flex items-center justify-between">
@@ -213,6 +215,8 @@ function Dashboard() {
         <section>
           <ProductTable products={filtered} onSelect={setSelected} />
         </section>
+        </>
+        )}
 
         <footer className="pt-4 pb-8 text-center text-[11px] text-muted-foreground">
           Aurum · Crafted for marketplace operators · Grey & Gold edition
