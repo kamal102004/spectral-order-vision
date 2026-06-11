@@ -11,7 +11,10 @@ import { TrendChart } from "@/components/dashboard/TrendChart";
 import { InsightsPanel } from "@/components/dashboard/InsightsPanel";
 import { ProductTable } from "@/components/dashboard/ProductTable";
 import { ProductDrillDown } from "@/components/dashboard/ProductDrillDown";
-import { UploadPanel } from "@/components/dashboard/UploadPanel";
+import { UploadPanel, UploadResult } from "@/components/dashboard/UploadPanel";
+import { KeywordAnalytics } from "@/components/dashboard/KeywordAnalytics";
+import { rowsToProducts } from "@/lib/csvParser";
+import { buildKeywordRows } from "@/lib/keywordAnalytics";
 
 export const Route = createFileRoute("/")({
   head: () => ({
